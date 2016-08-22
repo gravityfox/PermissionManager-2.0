@@ -12,6 +12,7 @@ import io.github.djxy.permissionManager.rules.region.plugins.FoxGuardPlugin;
 import io.github.djxy.permissionManager.rules.region.plugins.RedProtectPlugin;
 import io.github.djxy.permissionManager.subjects.group.GroupCollection;
 import io.github.djxy.permissionManager.subjects.user.UserCollection;
+import net.foxdenstudio.sponge.foxguard.plugin.compat.djxy.pm.FGCompat;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.event.Listener;
@@ -29,6 +30,8 @@ import java.nio.file.Path;
 @Plugin(id = "permissionmanager", name = "PermissionManager v2", version = "2.0", authors = {"Djxy"})
 public class PermissionManager {
 
+    private static final int FG_COMPAT_MIN_VERSION = 1;
+
     private static final Logger LOGGER = new Logger(PermissionManager.class);
 
     private static PermissionManager instance;
@@ -42,16 +45,28 @@ public class PermissionManager {
     private Path path;
 
     @Listener
-    public void onGameConstructionEvent(GameConstructionEvent event){
+    public void onGameConstructionEvent(GameConstructionEvent event) {
         instance = this;
 
         Sponge.getEventManager().registerListeners(this, new PlayerLoginEvent());
 
         Logger.setLoggerMode(LoggerMode.DEBUG_SERVER);
 
-        if(Sponge.getPluginManager().isLoaded("foxguard"))
-            RegionRuleService.instance.addRegionPlugin(new FoxGuardPlugin());
-        if(Sponge.getPluginManager().isLoaded("br.net.fabiozumbi12.redprotect"))
+        if (Sponge.getPluginManager().isLoaded("foxguard")) {
+            try {
+                LOGGER.info("FoxGuard is present. Loading compatibility module.");
+                int compatVersion = FGCompat.getCompatVersion();
+                LOGGER.info("FoxGuard compatibility module loaded. Compat version: " + compatVersion + " Minimum version: " + FG_COMPAT_MIN_VERSION);
+                if (compatVersion < FG_COMPAT_MIN_VERSION) {
+                    LOGGER.error("FoxGuard compatibility module version is lower than required! Use a newer version of FoxGuard!");
+                } else {
+                    RegionRuleService.instance.addRegionPlugin(new FoxGuardPlugin());
+                }
+            } catch (NoClassDefFoundError e) {
+                LOGGER.error("FoxGuard compatibility module not found! Use a newer version of FoxGuard!");
+            }
+        }
+        if (Sponge.getPluginManager().isLoaded("br.net.fabiozumbi12.redprotect"))
             RegionRuleService.instance.addRegionPlugin(new RedProtectPlugin());
 
         UserCollection.instance.setDirectory(path.resolve("users"));
@@ -65,20 +80,20 @@ public class PermissionManager {
     }
 
     @Listener
-    public void onGamePreInitializationEvent(GamePreInitializationEvent event){
+    public void onGamePreInitializationEvent(GamePreInitializationEvent event) {
         Sponge.getServiceManager().setProvider(this, org.spongepowered.api.service.permission.PermissionService.class, PermissionService.instance);
 
-        LOGGER.info("PermissionService is now enable.");
+        LOGGER.info("PermissionService is now enabled.");
     }
 
     @Listener
-    public void onGameInitializationEvent(GameInitializationEvent event){
+    public void onGameInitializationEvent(GameInitializationEvent event) {
         CustomCommands.registerObject(new CreateGroupCommand());
     }
 
     @Listener
-    public void onGameStoppedServerEvent(GameStoppedServerEvent event){
-        LOGGER.info("PermissionService is about to save the subjects.");
+    public void onGameStoppedServerEvent(GameStoppedServerEvent event) {
+        LOGGER.info("PermissionService is about to save subjects.");
         UserCollection.instance.save();
         GroupCollection.instance.save();
     }

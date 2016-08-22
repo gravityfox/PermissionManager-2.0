@@ -2,12 +2,10 @@ package io.github.djxy.permissionManager.rules.region.plugins;
 
 import io.github.djxy.permissionManager.logger.Logger;
 import io.github.djxy.permissionManager.rules.region.RegionPlugin;
-import net.foxdenstudio.sponge.foxguard.plugin.FGManager;
-import net.foxdenstudio.sponge.foxguard.plugin.region.IRegion;
+import net.foxdenstudio.sponge.foxguard.plugin.compat.djxy.pm.FGCompat;
 import org.spongepowered.api.entity.living.player.Player;
 
 import java.util.Collection;
-import java.util.Set;
 
 /**
  * Created by Samuel on 2016-08-19.
@@ -18,12 +16,12 @@ public class FoxGuardPlugin implements RegionPlugin {
 
     @Override
     public boolean isPlayerInRegion(Player player, Collection<String> regions) {
-        Set<IRegion> set = FGManager.getInstance().getRegionsAtPos(player.getWorld(), player.getLocation().getBlockPosition());
-
-        for(IRegion iRegion : set)
-            if (iRegion.contains(player.getLocation().getBlockPosition(), player.getWorld()) && regions.contains(iRegion.getName()))
-                return true;
-
+        // I assume this is an OR operation, not an AND operation,
+        // so if they are in at least one of the regions, this method should return true.
+        // Invert this if that's not the case. -gravityfox
+        for (String region : regions) {
+            if (FGCompat.isPlayerInRegion(player, region)) return true;
+        }
         return false;
     }
 
